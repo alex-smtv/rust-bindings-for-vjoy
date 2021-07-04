@@ -183,7 +183,7 @@ fn vjoy_get_owner_pid(device_id: u32) -> Result<i32, PIDFailed> {
     If acquisition is successful the function returns TRUE and the device status becomes VJD_STAT_OWN.
 */
 pub fn vjoy_acquire(device_id: u32) -> bool {
-    unsafe { !AcquireVJD(device_id) }
+    unsafe { AcquireVJD(device_id) }
 }
 
 /**
