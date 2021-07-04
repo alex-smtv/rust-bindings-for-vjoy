@@ -26,7 +26,7 @@ fn main() {
     lib_dir.push("lib");
     lib_dir.push("amd64");
 
-    let mut headers_dir = package_dir.clone();
+    let mut headers_dir = package_dir;
     headers_dir.push("vjoy_libs");
     headers_dir.push(vjoy_version);
     headers_dir.push("headers");
