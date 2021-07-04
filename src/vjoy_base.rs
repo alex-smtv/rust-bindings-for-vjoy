@@ -217,7 +217,7 @@ pub fn vjoy_get_driver_dll_version() -> (Option<u16>, Option<u16>) {
     Returns `true` if the vJoy Driver version matches the vJoyInterface.dll file version, or `false` if it fails.\
     Use [`vjoy_get_driver_dll_version`] instead if the version numbers should be kept.
 */
-fn vjoy_is_driver_match_dll() -> bool {
+pub fn vjoy_is_driver_match_dll() -> bool {
     unsafe { DriverMatch(std::ptr::null_mut(), std::ptr::null_mut()) }
 }
 
@@ -235,14 +235,14 @@ pub fn vjoy_get_status(device_id: u32) -> VJDStatus {
 
     Returns `false` otherwise (including the following cases: device does not exist, disabled, driver not installed).
 */
-fn vjoy_exist_device(device_id: u32) -> bool {
+pub fn vjoy_exist_device(device_id: u32) -> bool {
     unsafe { isVJDExists(device_id) }
 }
 
 /**
     Describe a negative state of [`vjoy_get_owner_pid`].
 */
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum PIDFailed {
     /// Usually indicates a FREE device (no owner).
     NoFileExist,
@@ -264,7 +264,7 @@ pub enum PIDFailed {
 
     Otherwise, the function returns an [`PIDFailed`] enum to describe the resulting state.
 */
-fn vjoy_get_owner_pid(device_id: u32) -> Result<i32, PIDFailed> {
+pub fn vjoy_get_owner_pid(device_id: u32) -> Result<i32, PIDFailed> {
     let result = unsafe { GetOwnerPid(device_id) };
 
     if result >= 0 {

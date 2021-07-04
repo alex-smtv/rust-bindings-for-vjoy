@@ -72,7 +72,7 @@ pub const HID_USAGE_POV: u32 = 57;
     Holds data that describe a vJoy device position.
 */
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct VJDPosition {
     pub bDevice: BYTE,
     pub wThrottle: LONG,
@@ -108,8 +108,8 @@ pub type JOYSTICK_POSITION_V2 = VJDPosition;
 /**
     Describes the status of a device.
 */
-#[derive(Debug, Eq, PartialEq)]
 #[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum VJDStatus {
     /// The vJoy Device is owned by this application.
     Own,
