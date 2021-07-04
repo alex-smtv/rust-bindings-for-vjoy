@@ -100,12 +100,12 @@ pub fn vjoy_get_driver_dll_version() -> (Option<u16>, Option<u16>) {
     driver_ver = format!("{:X}", driver_ver).parse::<u16>().unwrap();
 
     let driver_ver = if driver_ver == 0 {
-        Some(driver_ver)
-    } else {
         None
+    } else {
+        Some(driver_ver)
     };
 
-    let dll_ver = if dll_ver == 0 { Some(dll_ver) } else { None };
+    let dll_ver = if dll_ver == 0 { None } else { Some(dll_ver) };
 
     (driver_ver, dll_ver)
 }
