@@ -1,4 +1,4 @@
-//! Provides simple safe wrappers around vJoy public C API.
+//! Provides simple safe wrappers around vJoy public C API. Remark: vJoy C API is not thread-safe!
 
 #![allow(dead_code)]
 
@@ -24,29 +24,31 @@ pub fn vjoy_get_version() -> Option<u16> {
     // Important: GetvJoyVersion() to be used only after vJoyEnabled().
     let version = unsafe { GetvJoyVersion() };
     if version != 0 {
-        Some(version as u16)
+        Some(format!("{:X}", version).parse::<u16>().unwrap())
     } else {
         None
     }
 }
 
 /**
-    Handle a special case in the vJoy C API where a string is constructed into a void pointer which holds a PWSTR (= wchar_t string pointer; each char is 16 bits on Windows)
+    Handle a special case in the vJoy C API where a string is constructed into a void pointer which holds a PWSTR (= wchar_t string pointer; each char is 16 bits on Windows: cf Unicode).\
+
+    Return a [`String`], or [`None`] if the pointer is null.
 */
-fn c_widestring_to_string(c_ptr: *mut std::os::raw::c_void) -> Option<String> {
-    if c_ptr.is_null() {
+fn widestring_ptr_to_string(raw_ptr: *const u16) -> Option<String> {
+    if raw_ptr.is_null() {
         None
     } else {
         unsafe {
             use widestring::U16CString;
 
-            Some(U16CString::from_ptr_str(c_ptr as *const _).to_string_lossy())
+            Some(U16CString::from_ptr_str(raw_ptr).to_string_lossy())
         }
     }
 }
 
 /**
-    Get the Product String of the installed vJoy driver,
+    Get the Product [`String`] of the installed vJoy driver,
     or [`None`] if it fails (vJoy version 2.x is not installed and enabled).
 */
 pub fn vjoy_get_product() -> Option<String> {
@@ -55,11 +57,11 @@ pub fn vjoy_get_product() -> Option<String> {
     }
 
     // Important: to be used only after vJoyEnabled()
-    c_widestring_to_string(unsafe { GetvJoyProductString() })
+    widestring_ptr_to_string(unsafe { GetvJoyProductString() } as *const u16)
 }
 
 /**
-    Get the Manufacturer String of the installed vJoy driver,
+    Get the Manufacturer [`String`] of the installed vJoy driver,
     or [`None`] if it fails (vJoy version 2.x is not installed and enabled).
 */
 pub fn vjoy_get_manufacturer() -> Option<String> {
@@ -68,11 +70,11 @@ pub fn vjoy_get_manufacturer() -> Option<String> {
     }
 
     // Important: to be used only after vJoyEnabled()
-    c_widestring_to_string(unsafe { GetvJoyManufacturerString() })
+    widestring_ptr_to_string(unsafe { GetvJoyManufacturerString() as *const u16 })
 }
 
 /**
-    Get the Serial Number String of the installed vJoy driver,
+    Get the Serial Number [`String`] of the installed vJoy driver,
     or [`None`] if it fails (vJoy version 2.x is not installed and enabled).
 */
 pub fn vjoy_get_serial_number() -> Option<String> {
@@ -81,7 +83,7 @@ pub fn vjoy_get_serial_number() -> Option<String> {
     }
 
     // Important: to be used only after vJoyEnabled()
-    c_widestring_to_string(unsafe { GetvJoySerialNumberString() })
+    widestring_ptr_to_string(unsafe { GetvJoySerialNumberString() as *const u16 })
 }
 
 /**
@@ -111,7 +113,7 @@ pub fn vjoy_get_driver_dll_version() -> (Option<u16>, Option<u16>) {
 }
 
 /**
-    Returns `true` if the vJoy Driver version matches the vJoyInterface.dll file version, `false` otherwise.\
+    Returns `true` if the vJoy Driver version matches the vJoyInterface.dll file version, or `false` if it fails.\
     Use [`vjoy_get_driver_dll_version`] instead if the version numbers should be kept.
 */
 fn vjoy_is_driver_match_dll() -> bool {
@@ -121,8 +123,7 @@ fn vjoy_is_driver_match_dll() -> bool {
 fn vjoy_register_callback() {}
 
 /**
-    Returns the status of the specified device.\
-    Use [`VJDStatus`] enum to determine the result.
+    Returns the status of the specified device as a [`VJDStatus`] enum.
 */
 pub fn vjoy_get_status(device_id: u32) -> VJDStatus {
     unsafe { GetVJDStatus(device_id) }
@@ -133,21 +134,25 @@ pub fn vjoy_get_status(device_id: u32) -> VJDStatus {
 
     Returns `false` otherwise (including the following cases: device does not exist, disabled, driver not installed).
 */
-fn vjoy_is_exist(device_id: u32) -> bool {
+fn vjoy_exist_device(device_id: u32) -> bool {
     unsafe { isVJDExists(device_id) }
 }
 
 /**
-    Used to describe a negative state of [`vjoy_get_owner_pid`].\
-
-    - NoFileExist: Usually indicates a FREE device (no owner).
-    - NoDevExist : Usually indicates a MISSING device.
-    - BadDevStat : Indicates some internal problem.
+    Describe a negative state of [`vjoy_get_owner_pid`].
 */
+#[derive(Debug)]
 pub enum PIDFailed {
+    /// Usually indicates a FREE device (no owner).
     NoFileExist,
+
+    /// Usually indicates a MISSING device.
     NoDevExist,
+
+    /// Indicates some internal problem.
     BadDevStat,
+
+    /// Unknown
     Unknown(String),
 }
 
@@ -168,7 +173,7 @@ fn vjoy_get_owner_pid(device_id: u32) -> Result<i32, PIDFailed> {
             -11 => Err(PIDFailed::BadDevStat),
             -12 => Err(PIDFailed::NoDevExist),
             -13 => Err(PIDFailed::NoFileExist),
-            i => Err(PIDFailed::Unknown(format!(
+            _ => Err(PIDFailed::Unknown(format!(
                 "Device {} not owned by a process and its state is unknown.",
                 device_id,
             ))),
@@ -177,35 +182,57 @@ fn vjoy_get_owner_pid(device_id: u32) -> Result<i32, PIDFailed> {
 }
 
 /**
-    Acquire the specified device (id).\
+    Acquire the specified device.\
 
-    Only a device in state VJD_STAT_FREE can be acquired.
-    If acquisition is successful the function returns TRUE and the device status becomes VJD_STAT_OWN.
+    Only a device in state [`VJDStatus::Free`] can be acquired.\
+    If acquisition is successful the function returns `true` and the device status becomes [`VJDStatus::Own`].
 */
 pub fn vjoy_acquire(device_id: u32) -> bool {
     unsafe { AcquireVJD(device_id) }
 }
 
 /**
-    Relinquish the previously acquired specified device (id).\
+    Relinquish the previously acquired specified device.\
 
-    Use only when device is state VJD_STAT_OWN.
-    State becomes VJD_STAT_FREE immediately after this function returns.
+    Use only when device is in state [`VJDStatus::Own`].\
+    State becomes [`VJDStatus::Free`] immediately after this function returns.\
+    Returns `true` if relinquish is successful, or `false` if it fails.
 */
-pub fn vjoy_relinquish(device_id: u32) {
+pub fn vjoy_relinquish(device_id: u32) -> bool {
+    if vjoy_get_status(device_id) != VJDStatus::Own {
+        false
+    } else {
     unsafe { RelinquishVJD(device_id as u32) }
+        vjoy_get_status(device_id) == VJDStatus::Free
+    }
 }
 
 /**
-    Update the position data of the specified device (id).
-    Returns `true` if device updated.\
+    Update the position data of the specified device.\
+    Returns `true` if the device is updated or `false` otherwise.\
 
-    Use only after device has been successfully acquired.
+    This function is unchecked, meaning you must use it only after the device has been successfully acquired and this requirement is on your responsability.\
+
+    A checked version exist at [`vjoy_update_position`].
 */
-pub fn vjoy_update_position(device_id: u32, position: &mut VJDPosition) -> bool {
+pub fn vjoy_update_position_unchecked(device_id: u32, position: &mut VJDPosition) -> bool {
     unsafe { UpdateVJD(device_id, position) }
 }
 
+/**
+    Update the position data of the specified device.\
+    Returns `true` if the device is updated, or `false` otherwise.\
+
+    Should be used only after the device has been successfully acquired. The function will check
+    for this requirement and return [`None`] if the device is not owned.
+*/
+pub fn vjoy_update_position(device_id: u32, position: &mut VJDPosition) -> Option<bool> {
+    if vjoy_get_status(device_id) != VJDStatus::Own {
+        None
+    } else {
+        Some(unsafe { UpdateVJD(device_id, position) })
+    }
+}
 fn vjoy_get_total_btns() {}
 fn vjoy_get_total_dics_povs() {}
 fn vjoy_get_total_cont_povs() {}
