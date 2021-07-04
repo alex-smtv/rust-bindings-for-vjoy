@@ -106,25 +106,24 @@ pub struct VJDPosition {
 pub type JOYSTICK_POSITION_V2 = VJDPosition;
 
 /**
-    Describes the status of a device:
-
-    - Own: The vJoy Device is owned by this application.</br>
-
-    - Free: The vJoy Device is NOT owned by any application  (including this one).</br>
-
-    - Busy: The vJoy Device is owned by another application. It cannot be acquired by this application.</br>
-
-    - Miss: The vJoy Device is missing. It either does not   exist or the driver is disabled.</br>
-
-    - Unknown: Unknown
+    Describes the status of a device.
 */
 #[derive(Debug, Eq, PartialEq)]
 #[repr(C)]
 pub enum VJDStatus {
+    /// The vJoy Device is owned by this application.
     Own,
+
+    /// The vJoy Device is NOT owned by any application  (including this one).
     Free,
+
+    /// The vJoy Device is owned by another application. It cannot be acquired by this application.
     Busy,
+
+    /// The vJoy Device is missing. It either does not   exist or the driver is disabled.
     Miss,
+
+    /// Unknown.
     Unknown,
 }
 
