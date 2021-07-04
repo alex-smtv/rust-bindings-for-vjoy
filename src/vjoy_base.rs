@@ -303,7 +303,7 @@ pub fn vjoy_relinquish(device_id: u32) -> bool {
     if vjoy_get_status(device_id) != VJDStatus::Own {
         false
     } else {
-    unsafe { RelinquishVJD(device_id as u32) }
+        unsafe { RelinquishVJD(device_id as u32) }
         vjoy_get_status(device_id) == VJDStatus::Free
     }
 }
@@ -334,6 +334,7 @@ pub fn vjoy_update_position(device_id: u32, position: &mut VJDPosition) -> Optio
         Some(unsafe { UpdateVJD(device_id, position) })
     }
 }
+
 fn vjoy_get_total_btns() {}
 fn vjoy_get_total_dics_povs() {}
 fn vjoy_get_total_cont_povs() {}
