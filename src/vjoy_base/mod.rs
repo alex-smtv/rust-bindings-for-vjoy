@@ -2,6 +2,107 @@
 
 #![allow(dead_code)]
 
+#[cfg(test)]
+mod tests {
+    // Important: The vJoy C API is not thread-safe. This kind of error
+    // can occur: https://vjoy.freeforums.net/thread/28/call-registerclassex-failed-disabled-device
+    // Use `cargo test -- --test-threads 1` to run every test serially.
+    // Another solution is to use `serial_test` crate (solution chosen here).
+
+    use super::*;
+    use serial_test::serial;
+
+    const DEVICE_TO_TEST: u32 = 1;
+
+    #[test]
+    #[serial]
+    fn check_vjoy_enabled() {
+        assert!(vjoy_is_enabled());
+    }
+
+    #[test]
+    #[serial]
+    fn check_device_exist() {
+        assert!(vjoy_exist_device(DEVICE_TO_TEST));
+    }
+
+    #[test]
+    #[serial]
+    fn status_free_when_launched() {
+        assert_eq!(VJDStatus::Free, vjoy_get_status(DEVICE_TO_TEST));
+    }
+
+    #[test]
+    #[serial]
+    fn driver_dll_detected() {
+        let (driver, dll) = vjoy_get_driver_dll_version();
+        assert!(driver.is_some());
+        assert!(dll.is_some());
+    }
+
+    #[test]
+    #[serial]
+    fn driver_dll_match_consistency() {
+        let (driver, dll) = vjoy_get_driver_dll_version();
+        let is_match = driver.unwrap_or(0) == dll.unwrap_or(0);
+
+        assert_eq!(is_match, vjoy_is_driver_match_dll());
+    }
+
+    #[test]
+    #[serial]
+    fn get_version_works() {
+        assert!(vjoy_get_version().is_some());
+    }
+
+    #[test]
+    #[serial]
+    fn get_driver_get_version_match() {
+        let (driver, _) = vjoy_get_driver_dll_version();
+        assert!(driver.is_some());
+
+        let driver_alternative = vjoy_get_version();
+        assert!(driver_alternative.is_some());
+
+        assert_eq!(driver.unwrap(), driver_alternative.unwrap());
+    }
+
+    #[test]
+    #[serial]
+    fn acquire_relinquish() {
+        assert!(vjoy_acquire(DEVICE_TO_TEST));
+        assert_eq!(VJDStatus::Own, vjoy_get_status(DEVICE_TO_TEST));
+
+        assert!(vjoy_relinquish(DEVICE_TO_TEST));
+        assert_eq!(VJDStatus::Free, vjoy_get_status(DEVICE_TO_TEST));
+    }
+
+    #[test]
+    #[serial]
+    fn pid_match_vjoy_own() {
+        vjoy_acquire(DEVICE_TO_TEST);
+
+        let vjoy_pid = vjoy_get_owner_pid(DEVICE_TO_TEST);
+
+        assert!(vjoy_pid.is_ok());
+        assert_eq!(std::process::id() as i32, vjoy_pid.unwrap());
+
+        vjoy_relinquish(DEVICE_TO_TEST);
+    }
+
+    #[test]
+    #[serial]
+    fn widestring_ptr_to_string_works() {
+        // buf represents the string "Test"
+        let buf = vec![84_u16, 101, 115, 116, 0];
+        let raw_ptr = buf.as_ptr();
+
+        let str = widestring_ptr_to_string(raw_ptr);
+
+        assert_eq!("Test", str.unwrap());
+    }
+}
+
 use crate::ffi::*;
 pub use crate::ffi::{VJDPosition, VJDStatus};
 
