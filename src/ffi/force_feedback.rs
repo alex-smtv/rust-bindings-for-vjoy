@@ -3,15 +3,7 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 
-pub type BOOL = bool;
-pub type BYTE = std::os::raw::c_uchar;
-pub type UCHAR = std::os::raw::c_uchar;
-pub type WORD = std::os::raw::c_ushort;
-pub type DWORD = std::os::raw::c_ulong;
-pub type UINT = std::os::raw::c_uint;
-pub type ULONG = std::os::raw::c_ulong;
-pub type LONG = std::os::raw::c_long;
-pub type PVOID = *mut std::os::raw::c_void;
+use super::type_conversion::{BOOL, BYTE, DWORD, LONG, PVOID, UCHAR, UINT, ULONG, WORD};
 
 pub const HID_USAGE_CONST: u32 = 38;
 pub const HID_USAGE_RAMP: u32 = 39;
@@ -59,7 +51,6 @@ pub const F_GET_DRV_INFO: u32 = 2334;
 pub const F_RESET_DEV: u32 = 2335;
 pub const F_GET_POSITIONS: u32 = 2336;
 
-pub type RemovalCB = std::option::Option<unsafe extern "C" fn(arg1: BOOL, arg2: BOOL, arg3: PVOID)>;
 pub const FFBEType_ET_NONE: FFBEType = 0;
 pub const FFBEType_ET_CONST: FFBEType = 1;
 pub const FFBEType_ET_RAMP: FFBEType = 2;
@@ -212,34 +203,33 @@ pub type FFB_EFF_ENVLP = _FFB_EFF_ENVLP;
 pub type FfbGenCB = std::option::Option<unsafe extern "C" fn(arg1: PVOID, arg2: PVOID)>;
 
 extern "C" {
-    pub fn RegisterRemovalCB(cb: RemovalCB, data: PVOID);
-    pub fn vJoyFfbCap(Supported: *mut BOOL) -> BOOL;
-    pub fn FfbGetEffect() -> FFBEType;
-    pub fn FfbRegisterGenCB(cb: FfbGenCB, data: PVOID);
-    pub fn FfbStart(rID: UINT) -> BOOL;
-    pub fn FfbStop(rID: UINT);
-    pub fn IsDeviceFfb(rID: UINT) -> BOOL;
-    pub fn IsDeviceFfbEffect(rID: UINT, Effect: UINT) -> BOOL;
+    pub fn Ffb_h_DevCtrl(Packet: *const FFB_DATA, Control: *mut FFB_CTRL) -> DWORD;
+    pub fn Ffb_h_DevGain(Packet: *const FFB_DATA, Gain: *mut BYTE) -> DWORD;
     pub fn Ffb_h_DeviceID(Packet: *const FFB_DATA, DeviceID: *mut std::os::raw::c_int) -> DWORD;
-    pub fn Ffb_h_Type(Packet: *const FFB_DATA, Type: *mut FFBPType) -> DWORD;
+    pub fn Ffb_h_EBI(Packet: *const FFB_DATA, Index: *mut std::os::raw::c_int) -> DWORD;
+    pub fn Ffb_h_Eff_Cond(Packet: *const FFB_DATA, Condition: *mut FFB_EFF_COND) -> DWORD;
+    pub fn Ffb_h_Eff_Constant(
+        Packet: *const FFB_DATA,
+        ConstantEffect: *mut FFB_EFF_CONSTANT,
+    ) -> DWORD;
+    pub fn Ffb_h_Eff_Envlp(Packet: *const FFB_DATA, Envelope: *mut FFB_EFF_ENVLP) -> DWORD;
+    pub fn Ffb_h_Eff_Period(Packet: *const FFB_DATA, Effect: *mut FFB_EFF_PERIOD) -> DWORD;
+    pub fn Ffb_h_Eff_Ramp(Packet: *const FFB_DATA, RampEffect: *mut FFB_EFF_RAMP) -> DWORD;
+    pub fn Ffb_h_Eff_Report(Packet: *const FFB_DATA, Effect: *mut FFB_EFF_REPORT) -> DWORD;
+    pub fn Ffb_h_EffNew(Packet: *const FFB_DATA, Effect: *mut FFBEType) -> DWORD;
+    pub fn Ffb_h_EffOp(Packet: *const FFB_DATA, Operation: *mut FFB_EFF_OP) -> DWORD;
     pub fn Ffb_h_Packet(
         Packet: *const FFB_DATA,
         Type: *mut WORD,
         DataSize: *mut std::os::raw::c_int,
         Data: *mut *mut BYTE,
     ) -> DWORD;
-    pub fn Ffb_h_EBI(Packet: *const FFB_DATA, Index: *mut std::os::raw::c_int) -> DWORD;
-    pub fn Ffb_h_Eff_Report(Packet: *const FFB_DATA, Effect: *mut FFB_EFF_REPORT) -> DWORD;
-    pub fn Ffb_h_Eff_Ramp(Packet: *const FFB_DATA, RampEffect: *mut FFB_EFF_RAMP) -> DWORD;
-    pub fn Ffb_h_EffOp(Packet: *const FFB_DATA, Operation: *mut FFB_EFF_OP) -> DWORD;
-    pub fn Ffb_h_DevCtrl(Packet: *const FFB_DATA, Control: *mut FFB_CTRL) -> DWORD;
-    pub fn Ffb_h_Eff_Period(Packet: *const FFB_DATA, Effect: *mut FFB_EFF_PERIOD) -> DWORD;
-    pub fn Ffb_h_Eff_Cond(Packet: *const FFB_DATA, Condition: *mut FFB_EFF_COND) -> DWORD;
-    pub fn Ffb_h_DevGain(Packet: *const FFB_DATA, Gain: *mut BYTE) -> DWORD;
-    pub fn Ffb_h_Eff_Envlp(Packet: *const FFB_DATA, Envelope: *mut FFB_EFF_ENVLP) -> DWORD;
-    pub fn Ffb_h_EffNew(Packet: *const FFB_DATA, Effect: *mut FFBEType) -> DWORD;
-    pub fn Ffb_h_Eff_Constant(
-        Packet: *const FFB_DATA,
-        ConstantEffect: *mut FFB_EFF_CONSTANT,
-    ) -> DWORD;
+    pub fn Ffb_h_Type(Packet: *const FFB_DATA, Type: *mut FFBPType) -> DWORD;
+    pub fn FfbGetEffect() -> FFBEType;
+    pub fn FfbRegisterGenCB(cb: FfbGenCB, data: PVOID);
+    pub fn FfbStart(rID: UINT) -> BOOL;
+    pub fn FfbStop(rID: UINT);
+    pub fn IsDeviceFfb(rID: UINT) -> BOOL;
+    pub fn IsDeviceFfbEffect(rID: UINT, Effect: UINT) -> BOOL;
+    pub fn vJoyFfbCap(Supported: *mut BOOL) -> BOOL;
 }
