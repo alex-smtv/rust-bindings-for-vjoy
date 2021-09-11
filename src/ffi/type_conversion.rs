@@ -1,3 +1,4 @@
+#![allow(clippy::upper_case_acronyms)]
 pub type BOOL = bool;
 pub type BYTE = std::os::raw::c_uchar;
 pub type UCHAR = std::os::raw::c_uchar;
