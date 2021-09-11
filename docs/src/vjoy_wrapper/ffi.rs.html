@@ -1,0 +1,197 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src\ffi.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ffi.rs - source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled ><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="icon" type="image/svg+xml" href="../../favicon.svg"><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../vjoy_wrapper/index.html'><div class='logo-container rust-logo'><img src='../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="18" height="18" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input"name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="18" height="18" alt="Change settings" src="../../wheel.svg"></a></div></form></nav><section id="main" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1"> 1</span>
+<span id="2"> 2</span>
+<span id="3"> 3</span>
+<span id="4"> 4</span>
+<span id="5"> 5</span>
+<span id="6"> 6</span>
+<span id="7"> 7</span>
+<span id="8"> 8</span>
+<span id="9"> 9</span>
+<span id="10">10</span>
+<span id="11">11</span>
+<span id="12">12</span>
+<span id="13">13</span>
+<span id="14">14</span>
+<span id="15">15</span>
+<span id="16">16</span>
+<span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
+<span id="85">85</span>
+<span id="86">86</span>
+<span id="87">87</span>
+<span id="88">88</span>
+<span id="89">89</span>
+<span id="90">90</span>
+<span id="91">91</span>
+<span id="92">92</span>
+<span id="93">93</span>
+<span id="94">94</span>
+<span id="95">95</span>
+<span id="96">96</span>
+</pre><pre class="rust">
+<span class="attribute">#![<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
+<span class="attribute">#![<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
+<span class="attribute">#![<span class="ident">allow</span>(<span class="ident">non_snake_case</span>)]</span>
+<span class="attribute">#![<span class="ident">allow</span>(<span class="ident">non_camel_case_types</span>)]</span>
+<span class="attribute">#![<span class="ident">allow</span>(<span class="ident">non_upper_case_globals</span>)]</span>
+
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">force_feedback</span>;
+
+<span class="kw">mod</span> <span class="ident">rusty_structure</span>;
+<span class="kw">use</span> <span class="ident">rusty_structure::PositionV2</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">rusty_structure</span>::{<span class="ident">VJDAxis</span>, <span class="ident">VJDPosition</span>, <span class="ident">VJDPovDisc</span>, <span class="ident">VJDPovNumber</span>, <span class="ident">VJDStatus</span>, <span class="ident">VJDevice</span>};
+
+<span class="kw">mod</span> <span class="ident">type_conversion</span>;
+<span class="kw">use</span> <span class="ident">type_conversion</span>::{<span class="ident">BOOL</span>, <span class="ident">DWORD</span>, <span class="ident">LONG</span>, <span class="ident">PVOID</span>, <span class="ident">SHORT</span>, <span class="ident">WORD</span>};
+
+<span class="kw">type</span> <span class="ident">RemovalCB</span> <span class="op">=</span> <span class="ident">std::option::Option</span><span class="op">&lt;</span><span class="kw">unsafe</span> <span class="kw">extern</span> <span class="string">&quot;C&quot;</span> <span class="kw">fn</span>(<span class="ident">arg1</span>: <span class="ident">BOOL</span>, <span class="ident">arg2</span>: <span class="ident">BOOL</span>, <span class="ident">arg3</span>: <span class="ident">PVOID</span>)<span class="op">&gt;</span>;
+
+<span class="comment">// TODO: investigate if something interesting can be done with these REG/LOG values</span>
+<span class="comment">// pub const REG_PARAM: &amp;&#39;static [u8; 50usize] =</span>
+<span class="comment">//     b&quot;SYSTEM\\CurrentControlSet\\services\\vjoy\\Parameters\0&quot;;</span>
+<span class="comment">// pub const REG_PARAM_DEV0: &amp;&#39;static [u8; 58usize] =</span>
+<span class="comment">//     b&quot;SYSTEM\\CurrentControlSet\\services\\vjoy\\Parameters\\Device0\0&quot;;</span>
+<span class="comment">// pub const REG_PARAM_DEV: &amp;&#39;static [u8; 57usize] =</span>
+<span class="comment">//     b&quot;SYSTEM\\CurrentControlSet\\services\\vjoy\\Parameters\\Device\0&quot;;</span>
+<span class="comment">// pub const REG_DEVICE: &amp;&#39;static [u8; 7usize] = b&quot;Device\0&quot;;</span>
+<span class="comment">// pub const REG_INIT: &amp;&#39;static [u8; 5usize] = b&quot;Init\0&quot;;</span>
+<span class="comment">// pub const BTN_INIT: &amp;&#39;static [u8; 5usize] = b&quot;BTNS\0&quot;;</span>
+<span class="comment">// pub const INTERFACE_LOG_LEVEL: &amp;&#39;static [u8; 22usize] = b&quot;VJOYINTERFACELOGLEVEL\0&quot;;</span>
+<span class="comment">// pub const INTERFACE_LOG_FILE: &amp;&#39;static [u8; 21usize] = b&quot;VJOYINTERFACELOGFILE\0&quot;;</span>
+<span class="comment">// pub const INTERFACE_DEF_LOG_FILE: &amp;&#39;static [u8; 18usize] = b&quot;vJoyInterface.log\0&quot;;</span>
+
+<span class="doccomment">/**
+    Describes a button state of a vJoy device.
+*/</span>
+<span class="comment">// We cannot use bool, so we simulate it</span>
+<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u8</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">VJDButtonState</span> {
+    <span class="ident">Pressed</span> <span class="op">=</span> <span class="number">1</span>,
+    <span class="ident">Released</span> <span class="op">=</span> <span class="number">0</span>,
+}
+
+<span class="doccomment">/**
+    Describes a button of a vJoy device.
+*/</span>
+<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u8</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>)]</span>
+<span class="attribute">#[<span class="ident">rustfmt::skip</span>]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">VJDButton</span> {
+    <span class="comment">// vJoy button starts at index 1 and not 0</span>
+    <span class="ident">B1</span> <span class="op">=</span> <span class="number">1</span>, <span class="ident">B2</span>, <span class="ident">B3</span>, <span class="ident">B4</span>, <span class="ident">B5</span>, <span class="ident">B6</span>, <span class="ident">B7</span>, <span class="ident">B8</span>, <span class="ident">B9</span>, <span class="ident">B10</span>,
+    <span class="ident">B11</span>, <span class="ident">B12</span>, <span class="ident">B13</span>, <span class="ident">B14</span>, <span class="ident">B15</span>, <span class="ident">B16</span>, <span class="ident">B17</span>, <span class="ident">B18</span>, <span class="ident">B19</span>, <span class="ident">B20</span>,
+    <span class="ident">B21</span>, <span class="ident">B22</span>, <span class="ident">B23</span>, <span class="ident">B24</span>, <span class="ident">B25</span>, <span class="ident">B26</span>, <span class="ident">B27</span>, <span class="ident">B28</span>, <span class="ident">B29</span>, <span class="ident">B30</span>,
+    <span class="ident">B31</span>, <span class="ident">B32</span>, <span class="ident">B33</span>, <span class="ident">B34</span>, <span class="ident">B35</span>, <span class="ident">B36</span>, <span class="ident">B37</span>, <span class="ident">B38</span>, <span class="ident">B39</span>, <span class="ident">B40</span>,
+    <span class="ident">B41</span>, <span class="ident">B42</span>, <span class="ident">B43</span>, <span class="ident">B44</span>, <span class="ident">B45</span>, <span class="ident">B46</span>, <span class="ident">B47</span>, <span class="ident">B48</span>, <span class="ident">B49</span>, <span class="ident">B50</span>,
+    <span class="ident">B51</span>, <span class="ident">B52</span>, <span class="ident">B53</span>, <span class="ident">B54</span>, <span class="ident">B55</span>, <span class="ident">B56</span>, <span class="ident">B57</span>, <span class="ident">B58</span>, <span class="ident">B59</span>, <span class="ident">B60</span>,
+    <span class="ident">B61</span>, <span class="ident">B62</span>, <span class="ident">B63</span>, <span class="ident">B64</span>, <span class="ident">B65</span>, <span class="ident">B66</span>, <span class="ident">B67</span>, <span class="ident">B68</span>, <span class="ident">B69</span>, <span class="ident">B70</span>,
+    <span class="ident">B71</span>, <span class="ident">B72</span>, <span class="ident">B73</span>, <span class="ident">B74</span>, <span class="ident">B75</span>, <span class="ident">B76</span>, <span class="ident">B77</span>, <span class="ident">B78</span>, <span class="ident">B79</span>, <span class="ident">B80</span>,
+    <span class="ident">B81</span>, <span class="ident">B82</span>, <span class="ident">B83</span>, <span class="ident">B84</span>, <span class="ident">B85</span>, <span class="ident">B86</span>, <span class="ident">B87</span>, <span class="ident">B88</span>, <span class="ident">B89</span>, <span class="ident">B90</span>,
+    <span class="ident">B91</span>, <span class="ident">B92</span>, <span class="ident">B93</span>, <span class="ident">B94</span>, <span class="ident">B95</span>, <span class="ident">B96</span>, <span class="ident">B97</span>, <span class="ident">B98</span>, <span class="ident">B99</span>, <span class="ident">B100</span>,
+    <span class="ident">B101</span>, <span class="ident">B102</span>, <span class="ident">B103</span>, <span class="ident">B104</span>, <span class="ident">B105</span>, <span class="ident">B106</span>, <span class="ident">B107</span>, <span class="ident">B108</span>, <span class="ident">B109</span>, <span class="ident">B110</span>,
+    <span class="ident">B111</span>, <span class="ident">B112</span>, <span class="ident">B113</span>, <span class="ident">B114</span>, <span class="ident">B115</span>, <span class="ident">B116</span>, <span class="ident">B117</span>, <span class="ident">B118</span>, <span class="ident">B119</span>, <span class="ident">B120</span>,
+    <span class="ident">B121</span>, <span class="ident">B122</span>, <span class="ident">B123</span>, <span class="ident">B124</span>, <span class="ident">B125</span>, <span class="ident">B126</span>, <span class="ident">B127</span>, <span class="ident">B128</span>,
+}
+
+<span class="kw">extern</span> <span class="string">&quot;C&quot;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">AcquireVJD</span>(<span class="ident">rID</span>: <span class="ident">VJDevice</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">BOOL</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">DriverMatch</span>(<span class="ident">DllVer</span>: <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">WORD</span>, <span class="ident">DrvVer</span>: <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">WORD</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">BOOL</span>;
+    <span class="comment">//pub fn GetNumberExistingVJD(n: *mut std::os::raw::c_int) -&gt; BOOL;</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">GetOwnerPid</span>(<span class="ident">rID</span>: <span class="ident">VJDevice</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">std::os::raw::c_int</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">GetVJDAxisExist</span>(<span class="ident">rID</span>: <span class="ident">VJDevice</span>, <span class="ident">Axis</span>: <span class="ident">VJDAxis</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">BOOL</span>;
+    <span class="comment">// pub fn GetVJDAxisMax(rID: VJDevice, Axis: UINT, Max: *mut LONG) -&gt; BOOL;</span>
+    <span class="comment">// pub fn GetVJDAxisMin(rID: VJDevice, Axis: UINT, Min: *mut LONG) -&gt; BOOL;</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">GetVJDButtonNumber</span>(<span class="ident">rID</span>: <span class="ident">VJDevice</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">std::os::raw::c_int</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">GetVJDContPovNumber</span>(<span class="ident">rID</span>: <span class="ident">VJDevice</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">std::os::raw::c_int</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">GetVJDDiscPovNumber</span>(<span class="ident">rID</span>: <span class="ident">VJDevice</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">std::os::raw::c_int</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">GetVJDStatus</span>(<span class="ident">rID</span>: <span class="ident">VJDevice</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">VJDStatus</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">GetvJoyManufacturerString</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PVOID</span>;
+    <span class="comment">//pub fn GetvJoyMaxDevices(n: *mut std::os::raw::c_int) -&gt; BOOL;</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">GetvJoyProductString</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PVOID</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">GetvJoySerialNumberString</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PVOID</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">GetvJoyVersion</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SHORT</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">isVJDExists</span>(<span class="ident">rID</span>: <span class="ident">VJDevice</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">BOOL</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">RegisterRemovalCB</span>(<span class="ident">cb</span>: <span class="ident">RemovalCB</span>, <span class="ident">data</span>: <span class="ident">PVOID</span>);
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">RelinquishVJD</span>(<span class="ident">rID</span>: <span class="ident">VJDevice</span>);
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ResetAll</span>();
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ResetButtons</span>(<span class="ident">rID</span>: <span class="ident">VJDevice</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">BOOL</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ResetPovs</span>(<span class="ident">rID</span>: <span class="ident">VJDevice</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">BOOL</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ResetVJD</span>(<span class="ident">rID</span>: <span class="ident">VJDevice</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">BOOL</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">SetAxis</span>(<span class="ident">Value</span>: <span class="ident">LONG</span>, <span class="ident">rID</span>: <span class="ident">VJDevice</span>, <span class="ident">Axis</span>: <span class="ident">VJDAxis</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">BOOL</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">SetBtn</span>(<span class="ident">Value</span>: <span class="ident">VJDButtonState</span>, <span class="ident">rID</span>: <span class="ident">VJDevice</span>, <span class="ident">nBtn</span>: <span class="ident">VJDButton</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">BOOL</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">SetContPov</span>(<span class="ident">Value</span>: <span class="ident">DWORD</span>, <span class="ident">rID</span>: <span class="ident">VJDevice</span>, <span class="ident">nPov</span>: <span class="ident">VJDPovNumber</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">BOOL</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">SetDiscPov</span>(<span class="ident">Value</span>: <span class="ident">VJDPovDisc</span>, <span class="ident">rID</span>: <span class="ident">VJDevice</span>, <span class="ident">nPov</span>: <span class="ident">VJDPovNumber</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">BOOL</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">UpdateVJD</span>(<span class="ident">rID</span>: <span class="ident">VJDevice</span>, <span class="ident">pData</span>: <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">PositionV2</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">BOOL</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">vJoyEnabled</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">BOOL</span>;
+}
+</pre></div>
+</section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="vjoy_wrapper" data-search-index-js="../../search-index.js" data-search-js="../../search.js"></div>
+    <script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script>
+</body></html>

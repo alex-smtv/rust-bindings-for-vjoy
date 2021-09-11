@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["VJGeneral","Holder of utility methods to retrieve general data regarding the installed vJoy driver."]]});

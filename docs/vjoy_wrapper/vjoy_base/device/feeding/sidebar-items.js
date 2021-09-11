@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["VJDOwnership","Holder of utility methods to manage devices acquisition and relinquishment."],["VJDPosFeed","Holder of utility methods to feed/update vJoy devices in the most efficient way by using [`VJDPosition`]."],["VJDSeqFeed","Holder of utility methods to feed/update vJoy devices in a less efficient way by using sequential updates."]]});
