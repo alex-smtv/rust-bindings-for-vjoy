@@ -16,7 +16,7 @@ fn main() {
     target_dir.push("target");
     target_dir.push(env::var("PROFILE").unwrap());
 
-    let vjoy_version = "2.1.8";
+    let vjoy_version = "2.1.9.1";
     let vjoy_lib_name = "vJoyInterface";
 
     let mut lib_dir = package_dir.clone();
