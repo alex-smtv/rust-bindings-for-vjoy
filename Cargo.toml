@@ -9,6 +9,8 @@ license = "MIT"
 keywords = ["vjoy"]
 categories = ["api-bindings"]
 publish = false
+documentation = "https://alex-smtv.github.io/rust-vjoy-wrapper/vjoy_wrapper/index.html"
+repository = "https://github.com/alex-smtv/rust-vjoy-wrapper/"
 
 [dependencies]
 widestring = "0.4.3"
