@@ -2,7 +2,10 @@ mod ffi;
 pub mod vjoy_base;
 pub mod vjoy_extra;
 
-mod test_env {
+#[doc(hidden)]
+// pub is in general not needed for unit tests, but we'll need it for our custom targets defined in
+// Cargo.toml
+pub mod test_env {
     #![allow(unused)]
 
     use super::vjoy_base::device::VJDevice;

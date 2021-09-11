@@ -1,5 +1,7 @@
 //! Contains logics to feed/update vJoy devices.
 
+// TODO: review feedings into unused axes (C API will still accept such call with no error)
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -27,29 +29,18 @@ mod tests {
         VJDOwnership::acquire(TEST_DEVICE_1);
         VJDOwnership::acquire(TEST_DEVICE_2);
 
-        //assert!(vjoy_set_axis(DEVICE_TEST_1, VJoyAxis::X, 0));
-        //assert!(!vjoy_set_axis(DEVICE_TEST_1, VJoyAxis::Y, 16000));
-        //assert!(vjoy_set_axis(DEVICE_TEST_1, VJoyAxis::Ry, 16000));
-        //assert!(vjoy_set_axis(DEVICE_TEST_1, VJoyAxis::Slider1, 32000));
+        assert!(VJDSeqFeed::set_axis(TEST_DEVICE_1, VJDAxis::X, 0));
+        //assert!(!VJDSeqFeed::set_axis(TEST_DEVICE_1, VJDAxis::Y, 16000));
+        assert!(VJDSeqFeed::set_axis(TEST_DEVICE_1, VJDAxis::Ry, 16000));
+        assert!(VJDSeqFeed::set_axis(TEST_DEVICE_1, VJDAxis::Slider1, 32000));
 
         VJDOwnership::relinquish(TEST_DEVICE_1);
         VJDOwnership::relinquish(TEST_DEVICE_2);
     }
-
-    // #[test]
-    // #[serial]
-    // fn set_axis_unchecked_success() {
-    //     vjoy_acquire(DEVICE_1);
-    //     vjoy_acquire(DEVICE_2);
-
-    //     vjoy_set_axis_unchecked(DEVICE_1, VJoyAxis::X, 0);
-    //     vjoy_relinquish(DEVICE_1);
-    //     vjoy_relinquish(DEVICE_2);
-    // }
 }
 
 use super::info::VJDInfo;
-use crate::ffi::*;
+use crate::{ffi::*, vjoy_base::driver::VJGeneral};
 
 /**
     Holder of utility methods to manage devices acquisition and relinquishment.
@@ -95,33 +86,12 @@ pub struct VJDPosFeed(());
 
 impl VJDPosFeed {
     /**
-        Update the position data of the specified device.\
-        Returns `true` if the device is successfully updated, or `false` otherwise.
+        Send the position data of the device encoded in [`VJDPosition`] to vJoy. Only a device in state [`VJDStatus::Own`] can have his position updated.
 
-        This is the checked version. It will make sure you acquired the specified device
-        prior to calling this function and that the device id encoded
-        in the specified position matches the device id provided to this function. For an unchecked version, use [`VJDPosFeed::update_position_unchecked`].
+        Returns `true` if the operation succeeds, `false` otherwise.
     */
-    pub fn update_position_checked(device: VJDevice, position: &mut VJDPosition) -> bool {
-        // TODO: also check position.device_id match specified id
-        if VJDInfo::get_status(device) != VJDStatus::Own {
-            false
-        } else {
-            unsafe { UpdateVJD(device, position) }
-        }
-    }
-    // TODO: better use device_id + position, or just position and extract encoded device_id?
-    /**
-        Update the position data of the specified device.\
-        Returns `true` if the device is successfully updated or `false` otherwise.
-
-        This is the unchecked version. You are responsible to make sure you acquired
-        the specified device prior to calling this function and that the device id encoded
-        in the specified position matches the device id provided to this function. For a checked version,
-        use [`VJDPosFeed::update_position_checked`].
-    */
-    pub fn update_position_unchecked(device: VJDevice, position: &mut VJDPosition) -> bool {
-        unsafe { UpdateVJD(device, position) }
+    pub fn send_position(position: &VJDPosition) -> bool {
+        unsafe { UpdateVJD(position.get_device(), &mut position.get_position()) }
     }
 }
 
@@ -129,7 +99,7 @@ impl VJDPosFeed {
     Holder of utility methods to feed/update vJoy devices in a less efficient way by
     using sequential updates.
 
-    Feeds vJoy devices sequentially. This is the less efficient way, each functions call will in the internal implementation make a call to UpdateVJD(...).
+    Feeds vJoy devices sequentially. This is the less efficient way, each methods' call will in the internal implementation make a call to UpdateVJD(...).
 
     Another strategy exist with [`VJDPosFeed`] which will force you keep track of a [`VJDPosition`], but is more efficient. See [`VJDPosFeed`] for more details.
 */
@@ -137,32 +107,61 @@ pub struct VJDSeqFeed(());
 
 impl VJDSeqFeed {
     /**
-        Resets all the controls of the specified device to a set of values. Returns
-        `true` if operation succeed, `false` otherwise.
+        Resets all the controls of the specified device to a set of values.\
+        Returns `true` if the operation succeeds, `false` otherwise.
 
         These values are hard coded in the vJoy interface DLL and are currently set as follows:
-        - Axes X, Y & Z: Middle point.
+        - Axes X, Y & Z: middle point.
         - All other axes: 0.
-        - POV Switches: Neutral (-1).
-        - Buttons: Not Pressed (0).
+        - POV switches: neutral.
+        - Buttons: not pressed.
     */
     pub fn reset(device: VJDevice) -> bool {
-        unsafe { ResetVJD(device) }
+        // ResetVJD() is bugged... implement a custom code
+        // unsafe { ResetVJD(device) }
+
+        let was_owned = match VJDInfo::get_status(device) {
+            VJDStatus::Own => true,
+            VJDStatus::Free => false,
+            _ => return false,
+        };
+
+        if !was_owned {
+            VJDOwnership::acquire(device);
+        }
+
+        VJDPosFeed::send_position(&VJDPosition::new(device));
+
+        if !was_owned {
+            VJDOwnership::relinquish(device);
+        }
+
+        true
     }
 
     /**
-        Resets all the controls of the all devices to a set of values.
+        Resets all the controls of all devices to a set of values.
 
-        See [`VJDSeqFeed::reset`] for details.
+        Please note: vJoy public API doesn't tell us if it succeeds or not.
     */
     pub fn reset_all() {
-        unsafe { ResetAll() }
+        // ResetAll() is bugged... implement a custom code
+        // unsafe { ResetAll() }
+
+        // TODO: ?return bool with which devices failed (non blocking loop: if a device
+        // fails, the following may succeed)
+        for n in 1..=VJGeneral::MAX_DEVICES {
+            VJDSeqFeed::reset(VJDevice::get_from(n).unwrap());
+        }
     }
 
     /**
-        Resets all buttons to an inactive state in the specified device.
+        Resets all buttons to a released state in the specified device.
     */
     pub fn reset_btns(device: VJDevice) {
+        // return bool is not needed, internal implementation only return
+        // false when providing a wrong device number, which is impossible
+        // because we provide it by a controlled enum
         unsafe { ResetButtons(device) };
     }
 
@@ -170,57 +169,59 @@ impl VJDSeqFeed {
         Resets all POV switches to a neutral state in the specified device.
     */
     pub fn reset_povs(device: VJDevice) {
+        // return bool is not needed, internal implementation only return
+        // false when providing a wrong device number, which is impossible
+        // because we provide it by a controlled enum
         unsafe { ResetPovs(device) };
     }
 
-    /**
-        Write a value for the given axis to the specified device. Value can be in the range of 0x1-0x8000.
+    // TODO: check range 0x1-0x8000 for setaxis and update doc
 
-        This is the checked version. It will make sure you acquired the specified device prior to calling this function. For an unchecked version, use [`VJDSeqFeed::set_axis_unchecked`].
+    /**
+        Write a value to the given axis of the specified device. Only a device in state [`VJDStatus::Own`] can have his axes altered.
+
+        Returns `true` if the operation succeeds, `false` otherwise.
+
+        Value can be in the range of 0 to 32767. Middle point is at 16384.
     */
-    pub fn set_axis_checked(device: VJDevice, axis: VJDAxis, value: i32) -> bool {
-        if VJDInfo::get_status(device) != VJDStatus::Own {
-            false
-        } else {
-            unsafe { SetAxis(value, device, axis) }
-        }
+    // Value range is annonced 1 to 32768 in the vJoy doc, but the reality
+    // when tested is 0 to 32767. See this thread for more details:
+    // https://vjoy.freeforums.net/thread/15/axis-value-range
+    pub fn set_axis(device: VJDevice, axis: VJDAxis, value: i32) -> bool {
+        unsafe { SetAxis(value, device, axis) }
     }
 
     /**
-        Write a value for the given axis to the specified device. Value can be in the range of 0x1-0x8000.
+        Set a given button of the specified device pressed or released. Only a device in state [`VJDStatus::Own`] can have his buttons altered.
 
-        This is the unchecked version. You are responsible to make sure you acquired
-        the specified device prior to calling this function. For a checked version,
-        use [`VJDSeqFeed::set_axis_checked`].
+        Returns `true` if the operation succeeds, `false` otherwise.
+
+        Button number can be in the range 1 to 128.
     */
-    pub fn set_axis_unchecked(device: VJDevice, axis: VJDAxis, value: i32) {
-        unsafe { SetAxis(value, device, axis) };
+    pub fn set_btn(device: VJDevice, button_number: VJDButton, state: VJDButtonState) -> bool {
+        unsafe { SetBtn(state, device, button_number) }
     }
 
     /**
-        Write an activation state (`true` or `false`) in a given button to the specified device.\
-        Returns `true` if the device is successfully updated or `false` otherwise.
+        Write a discrete direction to a given discrete POV of the specified device.
 
-        Button number can in the range 1-128.
+        Returns `true` if the operation succeeds, `false` otherwise.
     */
-    pub fn set_btn(device: VJDevice, button_number: u8, is_activate: bool) -> bool {
-        unsafe { SetBtn(is_activate, device, button_number) }
+    pub fn set_disc_pov(
+        device: VJDevice,
+        pov_number: VJDPovNumber,
+        disc_direction: VJDPovDisc,
+    ) -> bool {
+        unsafe { SetDiscPov(disc_direction, device, pov_number) }
     }
 
     /**
-        Write a discrete direction in a given discrete POV to the specified device.\
-        Returns `true` if the device is successfully updated or `false` otherwise.\
-    */
-    pub fn set_disc_pov(device: VJDevice, pov_number: VJDPovNumber, value: VJDPovDisc) -> bool {
-        unsafe { SetDiscPov(value, device, pov_number) }
-    }
+        Write a value to a given continuous POV of the specified device.
 
-    /**
-        Write a value in a given continuous POV to the specified device.\
-        Returns `true` if the device is successfully updated or `false` otherwise.
+        Returns `true` if the operation succeeds, `false` otherwise.
 
-        Value can be in the range: -1 to 35999./
-        It is measured in units of one-hundredth a degree. -1 means neutral.
+        Value can be in the range 0 to 35999, neutral is [`u32::MAX`].\
+        A value is measured in units of one-hundredth a degree.
     */
     pub fn set_cont_pov(device: VJDevice, pov_number: VJDPovNumber, value: u32) -> bool {
         unsafe { SetContPov(value, device, pov_number) }
