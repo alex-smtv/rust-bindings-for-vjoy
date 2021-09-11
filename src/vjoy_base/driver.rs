@@ -133,6 +133,21 @@ impl VJGeneral {
     /// Describes the maximum number of vJoy devices that can potentially exist.
     pub const MAX_DEVICES: u8 = 16;
 
+    /// Describes the maximum value of a vJoy axis.
+    pub const MAX_AXIS_VALUE: i32 = 32767;
+
+    /// Describes the neutral value of a vJoy axis.
+    pub const NEUTRAL_AXIS_VALUE: i32 = 16384;
+
+    /// Describes the minimum value of a vJoy axis.
+    pub const MIN_AXIS_VALUE: i32 = 0;
+
+    /// Describes the registry path containing the list of defined devices.
+    pub const REG_DEVICES_PATH: &'static str = r"SYSTEM\CurrentControlSet\Services\vjoy\Parameters";
+
+    /// Describes the prefix of a device key in registry.
+    pub const REG_DEVICE_PREFIX: &'static str = "Device";
+
     /**
         Returns `true` if vJoy version 2.x is installed and enabled, `false` otherwise.
     */
