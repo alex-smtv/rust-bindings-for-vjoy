@@ -118,7 +118,7 @@ mod tests {
     #[serial]
     fn total_disc_povs_valid() {
         assert_eq!(0, VJDInfo::get_total_disc_povs(TEST_DEVICE_1).unwrap());
-        assert_eq!(1, VJDInfo::get_total_disc_povs(TEST_DEVICE_2).unwrap());
+        assert_eq!(4, VJDInfo::get_total_disc_povs(TEST_DEVICE_2).unwrap());
     }
 
     #[test]
@@ -219,10 +219,9 @@ impl VJDInfo {
     /**
         Returns the process id (PID) of the process that owns the specified device.
 
-        If the device is owned by a process, then the function returns a positive integer which is the PID of the owner.
+        If the device is owned by a process, then the method returns a positive integer which is the PID of the owner.
 
-        Otherwise, the function returns one variant of the [`PIDFailed`] enum to describe
-        the resulting negative state.
+        Otherwise, the method returns one variant of the [`PIDFailed`] enum to describe the resulting negative state.
     */
     pub fn get_owner_pid(device: VJDevice) -> Result<i32, PIDFailed> {
         let result = unsafe { GetOwnerPid(device) };
@@ -279,8 +278,7 @@ impl VJDInfo {
     }
 
     /**
-        Returns the number of continuous-type POV hats in the specified device, or one
-        variant of [`TotalPOVFailed`] if it fails.
+        Returns the number of continuous-type POV hats in the specified device, or one variant of [`TotalPOVFailed`] if it fails.
 
         Valid number value is 0 to 4.
     */
