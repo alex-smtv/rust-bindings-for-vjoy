@@ -1,3 +1,5 @@
+//! More information soon...
+
 mod ffi;
 pub mod vjoy_base;
 pub mod vjoy_extra;
