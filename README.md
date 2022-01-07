@@ -1,5 +1,5 @@
-# vjoy-wrapper: Rust Wrapper for vJoy
-A Rust wrapper around [vJoy](https://sourceforge.net/projects/vjoystick/) C API.
+# Rust Bindings for vJoy
+Rust bindings for [vJoy](https://sourceforge.net/projects/vjoystick/) using its C API. It also works like a wrapper by extending the original usabilities.
 
 This project is still on the works.
 
@@ -10,7 +10,7 @@ This is meant to be used by Rust developers. It is not meant to be used by end-u
 Please refer to the documentation to understand how to use the project. Read below to access the documentation.
 
 ## Documentation
-The project's documentation can be found at [https://alex-smtv.github.io/rust-vjoy-wrapper/vjoy_wrapper/index.html](https://alex-smtv.github.io/rust-vjoy-wrapper/vjoy_wrapper/index.html).
+The project's documentation can be found at [https://alex-smtv.github.io/rust-bindings-for-vjoy/vjoy_wrapper/index.html](https://alex-smtv.github.io/rust-bindings-for-vjoy/vjoy_wrapper/index.html).
 
 Additionally you can generate the documentation yourself with the command line `cargo doc --no-deps --open`.
 
